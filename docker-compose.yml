@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  webapp:
+    build:
+      context: .
+      args:
+        UID: ${UID}
+        GID: ${GID}
+    ports:
+      - "5001:5001"
+    # The 'user:' directive is removed from here
+    volumes:
+      - .:/app
+    env_file:
+      - .env

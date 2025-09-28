@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to right bottom, #024950, #003135 20%, #964734 33%, #0FA4AF 66%, #AFDDE5);
+            min-height: 100vh;
+        }
+
+        .admin-login-glass {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            animation: slideIn 0.5s ease forwards;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .admin-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            color: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .admin-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
+        }
+
+        .admin-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .admin-login-button {
+            background: linear-gradient(90deg, #0FA4AF, #AFDDE5);
+            color: #1e3a8a;
+            font-weight: 600;
+            padding: 1rem;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .admin-login-button:hover {
+            background: linear-gradient(90deg, #AFDDE5, #0FA4AF);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .password-toggle {
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .password-toggle:hover {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .flash-message {
+            animation: slideIn 0.5s ease forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto px-6 min-h-screen flex items-center justify-center">
+        <div class="w-full">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="mb-4 p-4 rounded-lg {{ 'bg-green-50 border-l-4 border-green-500 text-green-700' if category == 'success' else 'bg-red-50 border-l-4 border-red-500 text-red-700' if category == 'error' else 'bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700' if category == 'warning' else 'bg-blue-50 border-l-4 border-blue-500 text-blue-700' }} flash-message">
+                            <div class="flex items-center">
+                                <i class="fas {{ 'fa-check-circle' if category == 'success' else 'fa-exclamation-triangle' if category == 'warning' else 'fa-times-circle' if category == 'error' else 'fa-info-circle' }} mr-2"></i>
+                                {{ message }}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Admin Login Form -->
+            <div class="admin-login-glass mx-auto">
+                <h2 class="text-2xl font-semibold text-white mb-2 flex items-center">
+                    <i class="fas fa-shield-alt mr-2 text-white"></i>Admin Login
+                </h2>
+                <p class="text-white text-opacity-80 mb-6">Secure access to inventory management</p>
+                
+                <form id="adminLoginForm" action="{{ url_for('admin_login') }}" method="post" class="space-y-4">
+                    <div class="relative">
+                        <label for="adminPasswordInput" class="block text-sm font-medium text-white mb-2">Password</label>
+                        <input type="password" name="password" id="adminPasswordInput" 
+                               placeholder="Enter admin password" 
+                               class="admin-input" required>
+                        <i class="fas fa-eye password-toggle absolute right-4 top-12 transform -translate-y-1/2 text-white text-opacity-60" id="toggleAdminPassword"></i>
+                    </div>
+                    <button type="submit" class="admin-login-button">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Enter Admin Panel
+                    </button>
+                </form>
+                
+                <a href="{{ url_for('index') }}" class="block text-center mt-4 text-white text-opacity-80 hover:text-opacity-100">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Orders
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Password toggle functionality
+        const toggleAdminPassword = document.getElementById('toggleAdminPassword');
+        const adminPasswordInput = document.getElementById('adminPasswordInput');
+
+        if (toggleAdminPassword && adminPasswordInput) {
+            toggleAdminPassword.addEventListener('click', () => {
+                const type = adminPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                adminPasswordInput.setAttribute('type', type);
+                toggleAdminPassword.classList.toggle('fa-eye');
+                toggleAdminPassword.classList.toggle('fa-eye-slash');
+            });
+        }
+
+        // Admin login form validation
+        const adminLoginForm = document.getElementById('adminLoginForm');
+        if (adminLoginForm) {
+            adminLoginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const password = adminPasswordInput.value.trim();
+                if (password) {
+                    this.submit();
+                } else {
+                    alert('Please enter a password.');
+                    adminPasswordInput.focus();
+                }
+            });
+        }
+
+        // Auto-hide flash messages
+        setTimeout(() => {
+            const alerts = document.querySelectorAll('.flash-message');
+            alerts.forEach(alert => {
+                alert.style.transition = 'opacity 0.5s ease';
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 500);
+            });
+        }, 5000);
+    </script>
+</body>
+</html>
