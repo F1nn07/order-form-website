@@ -51,7 +51,7 @@ if not all([SECRET_KEY, ADMIN_PASSWORD, EMAIL_SENDER, EMAIL_PASSWORD]):
     sys.exit(1)
 
 ADMIN_PASSWORD_HASH = generate_password_hash(ADMIN_PASSWORD)
-ITEMS_FILE = 'items.json'
+ITEMS_FILE = 'data/items.json'
 
 def load_items():
     try:
@@ -207,7 +207,7 @@ def index():
 
             # --- START: New code for saving order to orders.csv ---
             try:
-                csv_file = 'orders.csv'
+                csv_file = 'data/orders.csv'
                 order_timestamp = datetime.now().isoformat()
                 
                 # Check if the file exists to decide on writing headers

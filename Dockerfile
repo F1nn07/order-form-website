@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libpng-dev \
     libjpeg-dev \
+    libx11-6 \
     && rm -rf /var/lib/apt/lists/*
 
 # 5. Upgrade pip
