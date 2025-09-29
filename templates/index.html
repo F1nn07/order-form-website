@@ -71,7 +71,7 @@
         <form id="orderForm" action="{{ url_for('index') }}" method="post">
             <div class="form-section">
                 <h2 class="text-2xl font-bold primary-text mb-6 flex items-center">
-                    <i class="fas fa-user mr-3 text-blue-600"></i>
+                    <i class="fas fa-user mr-3 text-[#00565c]"></i>
                     მომხმარებლის ინფორმაცია <span class="text-red-500 ml-1">*</span>
                 </h2>
                 <div class="grid md:grid-cols-3 gap-6">
@@ -103,7 +103,7 @@
                                autocomplete="off" required>
                     </div>
                     <div class="md:col-span-3 mt-4 grid md:grid-cols-2 gap-4">
-                       <button type="button" id="saveBtn" onclick="handleSaveClick()" class="w-full px-8 py-4 bg-blue-500 text-white text-lg font-semibold rounded-2xl shadow-md hover:bg-blue-600 transition-all duration-300">
+                       <button type="button" id="saveBtn" onclick="handleSaveClick()" class="w-full px-8 py-4 text-white text-lg font-semibold rounded-2xl shadow-md transition-all duration-300 bg-[#005e67] hover:bg-[#004c52]">
                             <i class="fas fa-save mr-2"></i>შენახვა
                         </button>
                         <button type="button" onclick="clearForm()" class="w-full px-8 py-4 bg-gray-300 text-gray-700 text-lg font-semibold rounded-2xl shadow-md hover:bg-gray-400 transition-all duration-300">
@@ -115,7 +115,7 @@
 
             <div class="form-section">
                 <h2 class="text-2xl font-bold primary-text mb-6 flex items-center">
-                    <i class="fas fa-box mr-3 text-blue-600"></i>
+                    <i class="fas fa-box mr-3 text-[#00565c]"></i>
                     აირჩიეთ ნივთები <span class="text-red-500 ml-1">*</span>
                 </h2>
                 
@@ -164,12 +164,12 @@
             {% if items %}
             <div class="text-center mt-12">
                 <button type="submit" id="submitOrderBtn" 
-                        class="group relative px-12 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-lg font-semibold rounded-2xl shadow-xl hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-300 overflow-hidden">
+                        class="group relative px-12 py-4 bg-gradient-to-r from-[#005e67] to-[#004c52] text-white text-lg font-semibold rounded-2xl shadow-xl hover:from-[#004c52] hover:to-[#003d42] transform hover:scale-105 transition-all duration-300 overflow-hidden">
                     <span class="relative z-10 flex items-center">
                         <i class="fas fa-shopping-cart mr-3 group-hover:animate-bounce"></i>
                         შეკვეთის დადასტურება
                     </span>
-                    <div class="absolute inset-0 bg-gradient-to-r from-blue-700 to-blue-800 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div class="absolute inset-0 bg-[#005e67] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </button>
                 <p class="mt-4 text-gray-600 text-sm">
                     <i class="fas fa-envelope mr-2 text-blue-500"></i>
