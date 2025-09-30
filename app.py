@@ -264,18 +264,17 @@ def admin_panel():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
 
-    items = load_items()
-
     if request.method == 'POST':
+        # Load items ONLY when an action is being performed
+        items = load_items()
         action = request.form.get('action')
-        
 
         # === HANDLE ADDING A SINGLE ITEM ===
         if action == 'add':
             name = request.form.get('name', '').strip()
             if name:
                 new_item = {
-                    'id': str(int(time.time() * 1000)), # Simple unique ID
+                    'id': str(int(time.time() * 1000)),
                     'name': name
                 }
                 items.append(new_item)
@@ -294,19 +293,17 @@ def admin_panel():
                 new_items = [item.strip() for item in bulk_items_str.splitlines() if item.strip()]
                 for name in new_items:
                     new_item = {
-                        'id': str(int(time.time() * 1000)) + str(added_count), # Ensure unique ID in loop
+                        'id': str(int(time.time() * 1000)) + str(added_count),
                         'name': name
                     }
                     items.append(new_item)
                     added_count += 1
-                
                 if added_count > 0 and save_items(items):
                     flash(f'✅ წარმატებით დაემატა {added_count} ნივთი.', 'success')
                 else:
                     flash('❌ ნივთების შენახვა ვერ მოხერხდა.', 'error')
             else:
                 flash('⚠️ გთხოვთ, შეიყვანოთ ნივთები ჯგუფურად დასამატებლად.', 'warning')
-
 
         # === HANDLE EDITING AN ITEM ===
         elif action == 'edit':
@@ -326,7 +323,7 @@ def admin_panel():
                     flash('❌ ნივთის განახლება ვერ მოხერხდა.', 'error')
             else:
                 flash('⚠️ რედაქტირებისთვის საჭიროა ID და ახალი სახელი.', 'warning')
-        
+
         # === HANDLE DELETING AN ITEM ===
         elif action == 'delete':
             item_id = request.form.get('id')
@@ -347,10 +344,11 @@ def admin_panel():
 
         return redirect(url_for('admin_panel'))
 
-    # --- Report generation logic (remains the same) ---
+    # --- For GET requests, load data for display ---
+    items = load_items()
     report_data = None
     try:
-        df = pd.read_csv('orders.csv')
+        df = pd.read_csv('data/orders.csv')
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         df['quantity'] = pd.to_numeric(df['quantity'])
         weekly_item_summary = df.groupby([pd.Grouper(key='timestamp', freq='W-SUN'), 'item_name'])['quantity'].sum().unstack(fill_value=0)
