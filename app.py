@@ -1,41 +1,34 @@
-# app.py - Final, unified version
+# app.py - Caching Version
 import os
 import json
 import sys
 import traceback
-from flask import Flask, render_template, request, redirect, url_for, session, flash 
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
-import argparse
-import re
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
-import csv # <--- ADDED IMPORT
-import pandas as pd # <--- ADDED IMPORT FOR ANALYSIS
- # Use a non-interactive backend for matplotlib
-
+import csv
+import pandas as pd
 
 load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your_secret_key_here')
 
-# Command line argument parsing
-#parser = argparse.ArgumentParser(description='Order Form Website')
-#parser.add_argument('--port', type=int, default=5001, help='Port to run the server on (default: 5001)')
-#parser.add_argument('--host', type=str, default='0.0.0.0', help='Host to bind to (default: 0.0.0.0)')
-#parser.add_argument("--bind", type=str, default=False)
+# --- START: Caching Implementation ---
+# Cache will hold our data in memory
+_cache = {
+    "items": None,
+    "items_timestamp": None,
+    "report_data": None,
+    "report_timestamp": None,
+}
+CACHE_TIMEOUT = timedelta(seconds=10) # Reload data from disk every 10 seconds
+# --- END: Caching Implementation ---
 
-#if len(sys.argv) > 1:
-#    args = parser.parse_args()
-#else:
-    # Default values when no command line args are given
-#    class Args:
- #       host = '0.0.0.0'
-  #      port = 5001
-   # args = Args()
 
 # Environment variables
 SECRET_KEY = os.getenv('SECRET_KEY')
@@ -52,26 +45,64 @@ if not all([SECRET_KEY, ADMIN_PASSWORD, EMAIL_SENDER, EMAIL_PASSWORD]):
 
 ADMIN_PASSWORD_HASH = generate_password_hash(ADMIN_PASSWORD)
 ITEMS_FILE = 'data/items.json'
+ORDERS_FILE = 'data/orders.csv'
 
-def load_items():
+def load_items(force_reload=False):
+    """Loads items from file or returns from cache."""
+    now = datetime.now()
+    if not force_reload and _cache["items"] is not None and _cache["items_timestamp"] and (now - _cache["items_timestamp"]) < CACHE_TIMEOUT:
+        return _cache["items"]
+    
     try:
         if os.path.exists(ITEMS_FILE):
             with open(ITEMS_FILE, 'r') as f:
-                return json.load(f)
+                items = json.load(f)
+                _cache["items"] = items
+                _cache["items_timestamp"] = now
+                return items
         return []
     except Exception as e:
         print(f"Error loading items: {e}")
         return []
 
 def save_items(items):
+    """Saves items to file and clears the cache."""
     try:
         with open(ITEMS_FILE, 'w') as f:
             json.dump(items, f, indent=4)
+        _cache["items"] = None # Invalidate cache
         return True
     except Exception as e:
         print(f"Error saving items: {e}")
         return False
 
+def generate_report_data(force_reload=False):
+    """Generates report from file or returns from cache."""
+    now = datetime.now()
+    if not force_reload and _cache["report_data"] is not None and _cache["report_timestamp"] and (now - _cache["report_timestamp"]) < CACHE_TIMEOUT:
+        return _cache["report_data"]
+
+    try:
+        df = pd.read_csv(ORDERS_FILE)
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        df['quantity'] = pd.to_numeric(df['quantity'])
+        weekly_item_summary = df.groupby([pd.Grouper(key='timestamp', freq='W-SUN'), 'item_name'])['quantity'].sum().unstack(fill_value=0)
+        if not weekly_item_summary.empty:
+            report_data = weekly_item_summary.reset_index()
+            report_data['timestamp'] = report_data['timestamp'].dt.strftime('%Y-%m-%d')
+            report_data_dict = report_data.to_dict(orient='records')
+            _cache["report_data"] = report_data_dict
+            _cache["report_timestamp"] = now
+            return report_data_dict
+        return None
+    except FileNotFoundError:
+        # print("orders.csv not found for report. This is normal if no orders exist.")
+        return None
+    except Exception as e:
+        print(f"An error occurred during report generation: {e}")
+        return None
+
+# (Keep your send_order_email function as is)
 def send_order_email(customer_name, customer_phone, room_number, order):
     try:
         msg = MIMEMultipart()
@@ -143,12 +174,12 @@ def send_order_email(customer_name, customer_phone, room_number, order):
         server.login(EMAIL_SENDER, EMAIL_PASSWORD)
         server.sendmail(EMAIL_SENDER, EMAIL_RECEIVER, msg.as_string())
         server.quit()
+        _cache["report_data"] = None # Invalidate report cache after a new order
         return True
     except Exception as e:
         print(f"Email send failed: {e}")
         print(traceback.format_exc())
         return False
-
 @app.route('/', methods=['GET', 'POST'])
 def index():
     all_items = load_items()
@@ -161,13 +192,10 @@ def index():
         'quantities': session.get('quantities', {})
     }
     
-    if request.method == 'GET':
-        # ... (Your existing GET logic remains the same) ...
-        pass
-    
     items = [item for item in all_items if search_query in item['name'].lower()] if search_query else all_items
 
     if request.method == 'POST':
+        # (Your POST logic for index remains the same)
         customer_name = request.form.get('customer_name', '').strip()
         customer_phone = request.form.get('customer_phone', '').strip()
         room_number = request.form.get('room_number', '').strip()
@@ -205,27 +233,17 @@ def index():
         if send_order_email(customer_name, customer_phone, room_number, order):
             flash(f'✅ შეკვეთა წარმატებით განხორციელდა, {customer_name}!', 'წარმატებულია')
 
-            # --- START: New code for saving order to orders.csv ---
             try:
-                csv_file = 'data/orders.csv'
                 order_timestamp = datetime.now().isoformat()
-                
-                # Check if the file exists to decide on writing headers
-                file_exists = os.path.isfile(csv_file)
-
-                with open(csv_file, 'a', newline='', encoding='utf-8') as f:
+                file_exists = os.path.isfile(ORDERS_FILE)
+                with open(ORDERS_FILE, 'a', newline='', encoding='utf-8') as f:
                     writer = csv.writer(f)
-                    
                     if not file_exists:
                         writer.writerow(['timestamp', 'customer_name', 'item_name', 'quantity'])
-                    
-                    # Write each item from the order as a separate row
                     for item_name, quantity in order.items():
                         writer.writerow([order_timestamp, customer_name, item_name, quantity])
-
             except Exception as e:
                 print(f"Error writing to CSV: {e}")
-            # --- END: New code for saving order to orders.csv ---
 
             if 'quantities' in session:
                 del session['quantities']
@@ -235,6 +253,7 @@ def index():
         return redirect(url_for('index'))
 
     return render_template('index.html', items=items, all_items=all_items, search_query=search_query, form_data=form_data)
+
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -254,21 +273,16 @@ def admin_logout():
     flash('👋 წარმატებით გამოვიდა.', 'info')
     return redirect(url_for('index'))
 
-# Replace your existing admin_panel function with this one
-# app.py
-
-# (Keep all your other code like imports, load_items, save_items, etc.)
-
 @app.route('/admin/', methods=['GET', 'POST'])
 def admin_panel():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
 
     if request.method == 'POST':
-        # Load items ONLY when an action is being performed
-        items = load_items()
+        items = load_items(force_reload=True) # Force reload on any change
         action = request.form.get('action')
 
+        # (All your POST action logic like 'add', 'bulk_add', 'edit', 'delete' remains the same)
         # === HANDLE ADDING A SINGLE ITEM ===
         if action == 'add':
             name = request.form.get('name', '').strip()
@@ -298,12 +312,14 @@ def admin_panel():
                     }
                     items.append(new_item)
                     added_count += 1
+                
                 if added_count > 0 and save_items(items):
                     flash(f'✅ წარმატებით დაემატა {added_count} ნივთი.', 'success')
                 else:
                     flash('❌ ნივთების შენახვა ვერ მოხერხდა.', 'error')
             else:
                 flash('⚠️ გთხოვთ, შეიყვანოთ ნივთები ჯგუფურად დასამატებლად.', 'warning')
+
 
         # === HANDLE EDITING AN ITEM ===
         elif action == 'edit':
@@ -323,7 +339,7 @@ def admin_panel():
                     flash('❌ ნივთის განახლება ვერ მოხერხდა.', 'error')
             else:
                 flash('⚠️ რედაქტირებისთვის საჭიროა ID და ახალი სახელი.', 'warning')
-
+        
         # === HANDLE DELETING AN ITEM ===
         elif action == 'delete':
             item_id = request.form.get('id')
@@ -344,25 +360,12 @@ def admin_panel():
 
         return redirect(url_for('admin_panel'))
 
-    # --- For GET requests, load data for display ---
+    # For GET requests, load data from cache first
     items = load_items()
-    report_data = None
-    try:
-        df = pd.read_csv('data/orders.csv')
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        df['quantity'] = pd.to_numeric(df['quantity'])
-        weekly_item_summary = df.groupby([pd.Grouper(key='timestamp', freq='W-SUN'), 'item_name'])['quantity'].sum().unstack(fill_value=0)
-        if not weekly_item_summary.empty:
-            report_data = weekly_item_summary.reset_index()
-            report_data['timestamp'] = report_data['timestamp'].dt.strftime('%Y-%m-%d')
-            report_data = report_data.to_dict(orient='records')
-    except FileNotFoundError:
-        print("orders.csv not found. No report to generate.")
-    except Exception as e:
-        print(f"An error occurred during report generation: {e}")
-
+    report_data = generate_report_data()
     return render_template('admin_panel.html', items=items, report_data=report_data)
 
+# (Keep your save_progress and clear_session functions as is)
 @app.route('/save-progress', methods=['POST'])
 def save_progress():
     try:
@@ -391,7 +394,3 @@ def clear_session():
     session.pop('room_number', None)
     session.pop('quantities', None)
     return "Session cleared", 200
-
-#if __name__ == '__main__':
-    print(f"🚀 Starting server on {args.host}:{args.port}")
-    app.run(debug=True, host=args.host, port=args.port)
