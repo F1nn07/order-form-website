@@ -4,6 +4,7 @@ import json
 import sys
 import traceback
 from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import smtplib
 from email.mime.text import MIMEText
@@ -17,6 +18,35 @@ import pandas as pd
 load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your_secret_key_here')
+
+# --- START: Database Configuration ---
+basedir = os.path.abspath(os.path.dirname(__file__))
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "data", "inventory.db")}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+# --- END: Database Configuration ---
+
+# --- START: Database Models ---
+class Item(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+
+class Order(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    customer_name = db.Column(db.String(100), nullable=False)
+    customer_phone = db.Column(db.String(50), nullable=False)
+    room_number = db.Column(db.String(50), nullable=False)
+    # This 'relationship' links an Order to its items
+    order_items = db.relationship('OrderItem', backref='order', lazy=True, cascade="all, delete-orphan")
+
+class OrderItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    item_name = db.Column(db.String(100), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+# --- END: Database Models ---
+
 
 # --- START: Caching Implementation ---
 # Cache will hold our data in memory
@@ -279,92 +309,49 @@ def admin_panel():
         return redirect(url_for('admin_login'))
 
     if request.method == 'POST':
-        items = load_items(force_reload=True) # Force reload on any change
         action = request.form.get('action')
 
-        # (All your POST action logic like 'add', 'bulk_add', 'edit', 'delete' remains the same)
         # === HANDLE ADDING A SINGLE ITEM ===
         if action == 'add':
             name = request.form.get('name', '').strip()
             if name:
-                new_item = {
-                    'id': str(int(time.time() * 1000)),
-                    'name': name
-                }
-                items.append(new_item)
-                if save_items(items):
-                    flash(f'✅ ნივთი "{name}" წარმატებით დაემატა.', 'success')
+                # Check if item already exists to prevent duplicates
+                existing_item = Item.query.filter_by(name=name).first()
+                if existing_item:
+                    flash(f'⚠️ Item "{name}" already exists.', 'warning')
                 else:
-                    flash('❌ ნივთის შენახვა ვერ მოხერხდა.', 'error')
+                    new_item = Item(name=name)
+                    db.session.add(new_item)    # <-- Saves to database
+                    db.session.commit()         # <-- Commits the change
+                    flash(f'✅ Item "{name}" added successfully.', 'success')
             else:
-                flash('⚠️ გთხოვთ, შეიყვანოთ ნივთის დასახელება.', 'warning')
-
-        # === HANDLE ADDING ITEMS IN BULK ===
-        elif action == 'bulk_add':
-            bulk_items_str = request.form.get('bulk_items', '').strip()
-            if bulk_items_str:
-                added_count = 0
-                new_items = [item.strip() for item in bulk_items_str.splitlines() if item.strip()]
-                for name in new_items:
-                    new_item = {
-                        'id': str(int(time.time() * 1000)) + str(added_count),
-                        'name': name
-                    }
-                    items.append(new_item)
-                    added_count += 1
-                
-                if added_count > 0 and save_items(items):
-                    flash(f'✅ წარმატებით დაემატა {added_count} ნივთი.', 'success')
-                else:
-                    flash('❌ ნივთების შენახვა ვერ მოხერხდა.', 'error')
-            else:
-                flash('⚠️ გთხოვთ, შეიყვანოთ ნივთები ჯგუფურად დასამატებლად.', 'warning')
-
+                flash('⚠️ Please enter an item name.', 'warning')
 
         # === HANDLE EDITING AN ITEM ===
         elif action == 'edit':
             item_id = request.form.get('id')
             new_name = request.form.get('name', '').strip()
-            item_found = False
-            if item_id and new_name:
-                for item in items:
-                    if item['id'] == item_id:
-                        original_name = item['name']
-                        item['name'] = new_name
-                        item_found = True
-                        break
-                if item_found and save_items(items):
-                    flash(f'✅ ნივთი "{original_name}" განახლდა на "{new_name}".', 'success')
-                else:
-                    flash('❌ ნივთის განახლება ვერ მოხერხდა.', 'error')
-            else:
-                flash('⚠️ რედაქტირებისთვის საჭიროა ID და ახალი სახელი.', 'warning')
-        
+            item_to_edit = Item.query.get(item_id) # <-- Get item from DB
+            if item_to_edit and new_name:
+                item_to_edit.name = new_name
+                db.session.commit()             # <-- Update in DB
+                flash(f'✅ Item updated to "{new_name}".', 'success')
+
         # === HANDLE DELETING AN ITEM ===
         elif action == 'delete':
             item_id = request.form.get('id')
-            item_to_delete = None
-            if item_id:
-                for item in items:
-                    if item['id'] == item_id:
-                        item_to_delete = item
-                        break
-                if item_to_delete:
-                    items.remove(item_to_delete)
-                    if save_items(items):
-                        flash(f'✅ ნივთი "{item_to_delete["name"]}" წაიშალა.', 'success')
-                    else:
-                        flash('❌ ნივთის წაშლა ვერ მოხერხდა.', 'error')
-                else:
-                    flash('⚠️ წასაშლელი ნივთი ვერ მოიძებნა.', 'warning')
+            item_to_delete = Item.query.get(item_id) # <-- Get item from DB by ID
+            if item_to_delete:
+                db.session.delete(item_to_delete)    # <-- Delete from DB
+                db.session.commit()
+                flash(f'✅ Item "{item_to_delete.name}" has been deleted.', 'success')
+        # You can add the 'bulk_add' logic here later if you need it
 
         return redirect(url_for('admin_panel'))
 
-    # For GET requests, load data from cache first
-    items = load_items()
-    report_data = generate_report_data()
-    return render_template('admin_panel.html', items=items, report_data=report_data)
-
+    # For GET requests, fetch items from the database
+    items = Item.query.order_by(Item.name).all() # <-- Reads from database
+    return render_template('admin_panel.html', items=items, report_data=None)
 # (Keep your save_progress and clear_session functions as is)
 @app.route('/save-progress', methods=['POST'])
 def save_progress():
