@@ -3,7 +3,7 @@ import os
 import json
 import sys
 import traceback
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import smtplib
@@ -304,55 +304,70 @@ def admin_logout():
     return redirect(url_for('index'))
 
 @app.route('/admin/', methods=['GET', 'POST'])
+# Replace your old admin_panel function with this simplified version
+@app.route('/admin/', methods=['GET'])
 def admin_panel():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
+    
+    items = Item.query.order_by(Item.name).all()
+    return render_template('admin_panel.html', items=items)
 
-    if request.method == 'POST':
-        action = request.form.get('action')
+@app.route('/api/item/add', methods=['POST'])
+def api_add_item():
+    if not session.get('admin_logged_in'):
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
+    
+    data = request.get_json()
+    name = data.get('name', '').strip()
 
-        # === HANDLE ADDING A SINGLE ITEM ===
-        if action == 'add':
-            name = request.form.get('name', '').strip()
-            if name:
-                # Check if item already exists to prevent duplicates
-                existing_item = Item.query.filter_by(name=name).first()
-                if existing_item:
-                    flash(f'⚠️ Item "{name}" already exists.', 'warning')
-                else:
-                    new_item = Item(name=name)
-                    db.session.add(new_item)    # <-- Saves to database
-                    db.session.commit()         # <-- Commits the change
-                    flash(f'✅ Item "{name}" added successfully.', 'success')
-            else:
-                flash('⚠️ Please enter an item name.', 'warning')
+    if not name:
+        return jsonify({'status': 'error', 'message': 'Item name cannot be empty'}), 400
+    
+    new_item = Item(name=name)
+    db.session.add(new_item)
+    db.session.commit()
+    
+    # Return the new item's data so the frontend can display it
+    return jsonify({
+        'status': 'success',
+        'item': {
+            'id': new_item.id,
+            'name': new_item.name
+        }
+    })
 
-        # === HANDLE EDITING AN ITEM ===
-        elif action == 'edit':
-            item_id = request.form.get('id')
-            new_name = request.form.get('name', '').strip()
-            item_to_edit = Item.query.get(item_id) # <-- Get item from DB
-            if item_to_edit and new_name:
-                item_to_edit.name = new_name
-                db.session.commit()             # <-- Update in DB
-                flash(f'✅ Item updated to "{new_name}".', 'success')
+@app.route('/api/item/delete/<int:item_id>', methods=['DELETE'])
+def api_delete_item(item_id):
+    if not session.get('admin_logged_in'):
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
+        
+    item_to_delete = Item.query.get(item_id)
+    if item_to_delete:
+        db.session.delete(item_to_delete)
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Item deleted'})
+    
+    return jsonify({'status': 'error', 'message': 'Item not found'}), 404
 
-        # === HANDLE DELETING AN ITEM ===
-        elif action == 'delete':
-            item_id = request.form.get('id')
-            item_to_delete = Item.query.get(item_id) # <-- Get item from DB by ID
-            if item_to_delete:
-                db.session.delete(item_to_delete)    # <-- Delete from DB
-                db.session.commit()
-                flash(f'✅ Item "{item_to_delete.name}" has been deleted.', 'success')
-        # You can add the 'bulk_add' logic here later if you need it
+@app.route('/api/item/edit/<int:item_id>', methods=['PUT'])
+def api_edit_item(item_id):
+    if not session.get('admin_logged_in'):
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
+    
+    data = request.get_json()
+    new_name = data.get('name', '').strip()
+    
+    item_to_edit = Item.query.get(item_id)
+    if item_to_edit and new_name:
+        item_to_edit.name = new_name
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Item updated'})
+        
+    return jsonify({'status': 'error', 'message': 'Invalid data or item not found'}), 400
+    
+# --- END: API Routes ---
 
-        return redirect(url_for('admin_panel'))
-
-    # For GET requests, fetch items from the database
-    items = Item.query.order_by(Item.name).all() # <-- Reads from database
-    return render_template('admin_panel.html', items=items, report_data=None)
-# (Keep your save_progress and clear_session functions as is)
 @app.route('/save-progress', methods=['POST'])
 def save_progress():
     try:

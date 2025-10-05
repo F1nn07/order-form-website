@@ -214,3 +214,110 @@ function submitAction(action, itemId = null) {
     // Submit the form
     form.submit();
 }
+
+// Add this to the end of static/script.js
+
+document.addEventListener('DOMContentLoaded', () => {
+    const addItemForm = document.getElementById('addItemForm');
+    const newItemNameInput = document.getElementById('newItemName');
+    const itemList = document.getElementById('itemList');
+
+    // --- 1. Handle ADDING a new item ---
+    if (addItemForm) {
+        addItemForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const itemName = newItemNameInput.value.trim();
+
+            if (itemName) {
+                fetch('/api/item/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: itemName })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // If successful, add new item row to the table
+                        const newRow = document.createElement('tr');
+                        newRow.id = `item-row-${data.item.id}`;
+                        newRow.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                   <input type="text" name="name" value="${data.item.name}"
+                                          class="edit-item-input bg-transparent border-b border-gray-300 w-full text-sm font-medium text-gray-900"
+                                          data-id="${data.item.id}">
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
+                                <button class="save-item-btn text-blue-600 hover:text-blue-900 hidden" data-id="${data.item.id}" title="Save">
+                                    <i class="fas fa-save text-lg"></i>
+                                </button>
+                                <button class="delete-item-btn text-red-600 hover:text-red-900 p-2" data-id="${data.item.id}" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        `;
+                        itemList.appendChild(newRow);
+                        newItemNameInput.value = ''; // Clear the input
+                    } else {
+                        alert(`Error: ${data.message}`);
+                    }
+                });
+            }
+        });
+    }
+
+    // --- 2. Handle DELETING and EDITING items ---
+    if (itemList) {
+        itemList.addEventListener('click', (e) => {
+            const target = e.target.closest('button');
+            if (!target) return;
+
+            // Handle DELETE
+            if (target.classList.contains('delete-item-btn')) {
+                const itemId = target.dataset.id;
+                if (confirm('Are you sure you want to delete this item?')) {
+                    fetch(`/api/item/delete/${itemId}`, { method: 'DELETE' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            document.getElementById(`item-row-${itemId}`).remove();
+                        } else {
+                            alert(`Error: ${data.message}`);
+                        }
+                    });
+                }
+            }
+            
+            // Handle SAVE (for edits)
+            if (target.classList.contains('save-item-btn')) {
+                const itemId = target.dataset.id;
+                const inputField = document.querySelector(`.edit-item-input[data-id='${itemId}']`);
+                const newName = inputField.value.trim();
+
+                fetch(`/api/item/edit/${itemId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newName })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        target.classList.add('hidden'); // Hide save button again
+                    } else {
+                        alert(`Error: ${data.message}`);
+                    }
+                });
+            }
+        });
+
+        // Show save button when an item name is changed
+        itemList.addEventListener('input', (e) => {
+            if (e.target.classList.contains('edit-item-input')) {
+                const itemId = e.target.dataset.id;
+                const saveBtn = document.querySelector(`.save-item-btn[data-id='${itemId}']`);
+                saveBtn.classList.remove('hidden');
+            }
+        });
+    }
+});
