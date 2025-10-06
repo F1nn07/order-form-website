@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>დადასტურებული შეკვეთები</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="min-h-screen py-8 bg-[#b9e1e2]">
+    <div class="container mx-auto px-6 max-w-7xl">
+        <!-- Header -->
+        <div class="bg-white rounded-2xl shadow-xl p-8 mb-8">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-check-circle text-3xl text-green-500"></i>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-800">დადასტურებული შეკვეთები</h1>
+                        <p class="text-gray-600">შეკვეთების ისტორია</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <a href="{{ url_for('admin_orders_pending') }}" class="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors">
+                        <i class="fas fa-clock mr-2"></i>მოლოდინში
+                    </a>
+                    <a href="{{ url_for('admin_orders_deleted') }}" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors">
+                        <i class="fas fa-trash mr-2"></i>წაშლილი
+                    </a>
+                    <a href="{{ url_for('admin_reports_weekly') }}" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors">
+                        <i class="fas fa-chart-bar mr-2"></i>რეპორტები
+                    </a>
+                    <a href="{{ url_for('admin_panel') }}" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                        <i class="fas fa-arrow-left mr-2"></i>უკან
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orders List -->
+        {% if orders %}
+            <div class="space-y-6">
+                {% for order in orders %}
+                <div class="bg-white rounded-2xl shadow-lg p-6" id="order-{{ order.id }}">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-2">
+                                <h3 class="text-xl font-bold text-gray-800">{{ order.customer_name }}</h3>
+                                <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                                    <i class="fas fa-check mr-1"></i>დადასტურებული
+                                </span>
+                            </div>
+                            <div class="grid md:grid-cols-4 gap-4 text-sm text-gray-600">
+                                <div><i class="fas fa-door-open mr-2 text-blue-500"></i><strong>ოთახი:</strong> {{ order.room_number }}</div>
+                                <div><i class="fas fa-phone mr-2 text-green-500"></i><strong>ტელეფონი:</strong> {{ order.customer_phone }}</div>
+                                <div><i class="fas fa-calendar mr-2 text-purple-500"></i><strong>შექმნის თარიღი:</strong> {{ order.timestamp.strftime('%Y-%m-%d %H:%M') }}</div>
+                                <div><i class="fas fa-check-circle mr-2 text-green-500"></i><strong>დადასტურების თარიღი:</strong> {{ order.confirmed_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                            </div>
+                        </div>
+                        <button onclick="toggleEditMode({{ order.id }})" class="ml-4 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors edit-toggle-btn">
+                            <i class="fas fa-edit mr-2"></i>რედაქტირება
+                        </button>
+                    </div>
+
+                    <!-- Order Items (View Mode) -->
+                    <div class="bg-gray-50 rounded-lg p-4 mb-3 view-mode-{{ order.id }}">
+                        <h4 class="font-semibold text-gray-700 mb-3 flex items-center">
+                            <i class="fas fa-list mr-2"></i>შეკვეთილი ნივთები:
+                        </h4>
+                        <div class="grid md:grid-cols-2 gap-2" id="items-view-{{ order.id }}">
+                            {% for item in order.order_items %}
+                            <div class="flex items-center justify-between bg-white px-3 py-2 rounded">
+                                <span class="font-medium">{{ item.item_name }}</span>
+                                <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm font-semibold">{{ item.quantity }} ცალი</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Order Items (Edit Mode) -->
+                    <div class="bg-blue-50 rounded-lg p-4 mb-3 edit-mode-{{ order.id }}" style="display: none;">
+                        <h4 class="font-semibold text-gray-700 mb-3 flex items-center">
+                            <i class="fas fa-edit mr-2"></i>შეკვეთის რედაქტირება:
+                        </h4>
+                        <div id="items-edit-{{ order.id }}" class="space-y-2">
+                            {% for item in order.order_items %}
+                            <div class="flex items-center gap-3 bg-white p-3 rounded">
+                                <input type="text" value="{{ item.item_name }}" class="flex-1 p-2 border border-gray-300 rounded item-name" readonly>
+                                <input type="number" value="{{ item.quantity }}" min="0" class="w-24 p-2 border border-gray-300 rounded text-center item-quantity">
+                                <button onclick="removeEditItem(this)" class="px-3 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="flex gap-3 mt-4">
+                            <button onclick="saveOrderEdit({{ order.id }})" class="flex-1 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600">
+                                <i class="fas fa-save mr-2"></i>შენახვა
+                            </button>
+                            <button onclick="toggleEditMode({{ order.id }})" class="flex-1 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600">
+                                <i class="fas fa-times mr-2"></i>გაუქმება
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Comment -->
+                    {% if order.admin_comment %}
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                        <p class="text-sm font-semibold text-blue-700 mb-1">
+                            <i class="fas fa-comment mr-2"></i>ადმინისტრატორის კომენტარი:
+                        </p>
+                        <p class="text-gray-700">{{ order.admin_comment }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if pagination.pages > 1 %}
+            <div class="mt-8 flex justify-center">
+                <nav aria-label="Page navigation">
+                    <ul class="inline-flex items-center -space-x-px">
+                        <li>
+                            <a href="{{ url_for('admin_orders_confirmed', page=pagination.prev_num) if pagination.has_prev else '#' }}"
+                               class="px-3 py-2 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 {{ 'opacity-50 cursor-not-allowed' if not pagination.has_prev }}">
+                                Previous
+                            </a>
+                        </li>
+                        {% for page_num in range(1, pagination.pages + 1) %}
+                            <li>
+                                <a href="{{ url_for('admin_orders_confirmed', page=page_num) }}"
+                                   class="px-3 py-2 leading-tight border border-gray-300 {{ 'bg-blue-50 text-blue-600' if page_num == pagination.page else 'text-gray-500 bg-white hover:bg-gray-100' }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                        {% endfor %}
+                        <li>
+                            <a href="{{ url_for('admin_orders_confirmed', page=pagination.next_num) if pagination.has_next else '#' }}"
+                               class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 {{ 'opacity-50 cursor-not-allowed' if not pagination.has_next }}">
+                                Next
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        {% else %}
+            <div class="bg-white rounded-2xl shadow-lg p-12 text-center">
+                <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
+                <h3 class="text-2xl font-bold text-gray-800 mb-2">დადასტურებული შეკვეთები არ არის</h3>
+                <p class="text-gray-600">დაადასტურეთ შეკვეთები მოლოდინში გვერდიდან</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function toggleEditMode(orderId) {
+            const viewMode = document.querySelector(`.view-mode-${orderId}`);
+            const editMode = document.querySelector(`.edit-mode-${orderId}`);
+            
+            if (editMode.style.display === 'none') {
+                viewMode.style.display = 'none';
+                editMode.style.display = 'block';
+            } else {
+                viewMode.style.display = 'block';
+                editMode.style.display = 'none';
+            }
+        }
+
+        function removeEditItem(button) {
+            button.closest('div').remove();
+        }
+
+        function saveOrderEdit(orderId) {
+            const editContainer = document.getElementById(`items-edit-${orderId}`);
+            const itemInputs = editContainer.querySelectorAll('.flex.items-center');
+            
+            const items = [];
+            itemInputs.forEach(input => {
+                const name = input.querySelector('.item-name').value;
+                const quantity = parseInt(input.querySelector('.item-quantity').value);
+                if (quantity > 0) {
+                    items.push({ name: name, quantity: quantity });
+                }
+            });
+
+            if (items.length === 0) {
+                alert('შეკვეთა უნდა შეიცავდეს მინიმუმ ერთ ნივთს!');
+                return;
+            }
+
+            fetch(`/api/order/edit/${orderId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: items })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('შეკვეთა წარმატებით განახლდა!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(err => alert('An error occurred: ' + err));
+        }
+    </script>
+</body>
+</html>

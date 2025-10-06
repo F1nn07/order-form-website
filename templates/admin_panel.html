@@ -7,13 +7,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">    
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    </style>
-</head>
+    <style> @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap'); </style>
 </head>
 <body class="min-h-screen py-8 bg-[#b9e1e2]">
-    <div class="container mx-auto px-6 max-w-4xl">
+    <div class="container mx-auto px-6 max-w-6xl">
+        <!-- Main Header -->
         <div class="bg-white rounded-2xl shadow-xl p-8 mb-8">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-4">
@@ -29,35 +27,52 @@
             </div>
         </div>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="mb-6 space-y-3">
-                    {% for category, message in messages %}
-                        <div class="p-4 rounded-lg {{ 'bg-green-50 border-l-4 border-green-500 text-green-700' if category == 'success' else 'bg-red-50 border-l-4 border-red-500 text-red-700' if category == 'error' else 'bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700' if category == 'warning' else 'bg-blue-50 border-l-4 border-blue-500 text-blue-700' }}">
-                            <div class="flex items-center">
-                                <i class="fas {{ 'fa-check-circle' if category == 'success' else 'fa-exclamation-triangle' if category == 'warning' else 'fa-times-circle' if category == 'error' else 'fa-info-circle' }} mr-3"></i>
-                                {{ message }}
-                            </div>
-                        </div>
-                    {% endfor %}
+        <!-- Order Management Quick Access Card -->
+        <div class="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl shadow-xl p-8 mb-8 text-white">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-4">
+                    <i class="fas fa-clipboard-list text-5xl opacity-80"></i>
+                    <div>
+                        <h2 class="text-2xl font-bold mb-1">შეკვეთების მართვა</h2>
+                        <p class="text-orange-100">მართეთ შემოსული შეკვეთები და იხილეთ რეპორტები</p>
+                    </div>
                 </div>
-            {% endif %}
-        {% endwith %}
+                <div class="flex gap-3 flex-wrap">
+                    <a href="{{ url_for('admin_orders_pending') }}" 
+                       class="relative px-6 py-3 bg-white text-orange-600 rounded-lg font-semibold hover:bg-orange-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                        <i class="fas fa-clock mr-2"></i>მოლოდინში
+                        {% if pending_count > 0 %}
+                        <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">{{ pending_count }}</span>
+                        {% endif %}
+                    </a>
+                    <a href="{{ url_for('admin_orders_confirmed') }}" 
+                       class="px-6 py-3 bg-white/20 backdrop-blur text-white rounded-lg font-semibold hover:bg-white/30 transition-all border border-white/30">
+                        <i class="fas fa-check-circle mr-2"></i>დადასტურებული
+                    </a>
+                    <a href="{{ url_for('admin_reports_weekly') }}" 
+                       class="px-6 py-3 bg-white/20 backdrop-blur text-white rounded-lg font-semibold hover:bg-white/30 transition-all border border-white/30">
+                        <i class="fas fa-chart-bar mr-2"></i>რეპორტები
+                    </a>
+                </div>
+            </div>
+        </div>
 
+        <!-- Inventory Management -->
         <div class="grid md:grid-cols-2 gap-8">
             <div class="bg-white rounded-2xl shadow-xl p-8">
                 <h2 class="text-xl font-bold text-gray-700 mb-6 flex items-center">
                     <i class="fas fa-plus-circle mr-3 text-green-500"></i>
                     ახალი ნივთის დამატება
                 </h2>
-                <form id="addItemForm" class="space-y-4"> <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">ნივთის დასახელება</label>
-                <input type="text" id="newItemName" name="name" placeholder="მაგ.: ბამბა" 
-               class="w-full p-4 border border-gray-200 rounded-xl" required>
-                     </div>
-                <button type="submit" class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-4 rounded-xl font-semibold">
-                      <i class="fas fa-plus mr-2"></i>ნივთის დამატება
-                </button>
+                <form id="addItemForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ნივთის დასახელება</label>
+                        <input type="text" id="newItemName" name="name" placeholder="მაგ.: ბამბა"
+                               class="w-full p-4 border border-gray-200 rounded-xl" required>
+                    </div>
+                    <button type="submit" class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-4 rounded-xl font-semibold">
+                        <i class="fas fa-plus mr-2"></i>ნივთის დამატება
+                    </button>
                 </form>
             </div>
 
@@ -68,7 +83,7 @@
                 </h2>
                 <div class="space-y-6">
                     <div class="text-center p-6 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl">
-                        <div class="text-3xl font-bold text-purple-600">{{ items|length }}</div>
+                        <div id="item-count-stat" class="text-3xl font-bold text-purple-600">{{ pagination.total or 0 }}</div>
                         <div class="text-sm text-purple-600 font-medium">სულ ნივთები</div>
                     </div>
                 </div>
@@ -76,100 +91,88 @@
         </div>
 
         <div class="bg-white rounded-2xl shadow-xl mt-8 p-8">
-            <h2 class="text-xl font-bold text-gray-700 mb-6 flex items-center">
+             <h2 class="text-xl font-bold text-gray-700 mb-6 flex items-center">
                 <i class="fas fa-layer-group mr-3 text-blue-500"></i>
                 ნივთების ჯგუფურად დამატება
             </h2>
-            <form method="post" class="space-y-4">
-                <input type="hidden" name="action" value="bulk_add">
+            <form id="bulkAddForm" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">შეიყვანეთ ნივთები, თითოეული ახალ ხაზზე:</label>
-                    <textarea name="bulk_items" rows="6" placeholder="მაგალითად:&#10;პირსახოცი&#10;ხალათი&#10;ჩუსტები" 
-                              class="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"></textarea>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">შეიყვანეთ ნივთები, თითაეული ახალ ხაზზე:</label>
+                    <textarea id="bulkItemsText" name="bulk_items" rows="6" placeholder="მაგალითად:&#10;პირსახოცი&#10;ხალათი&#10;ჩუსტები" 
+                              class="w-full p-4 border border-gray-200 rounded-xl"></textarea>
                 </div>
-                <button type="submit" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-4 rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all">
+                <button type="submit" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-4 rounded-xl font-semibold">
                     <i class="fas fa-plus mr-2"></i>ჯგუფურად დამატება
                 </button>
             </form>
         </div>
+
         <div class="bg-white rounded-2xl shadow-xl mt-8 p-8">
-            <h2 class="text-xl font-bold text-gray-700 mb-6 flex items-center">
+            <div class="mb-6">
+                <label for="liveSearchInput" class="block text-sm font-medium text-gray-700 mb-2">Live Search Items:</label>
+                <div class="relative">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="liveSearchInput" placeholder="Start typing to find an item..." class="w-full p-3 pl-12 border border-gray-200 rounded-xl">
+                </div>
+            </div>
+
+            <h2 id="item-count-header" class="text-xl font-bold text-gray-700 mb-6 flex items-center">
                 <i class="fas fa-list mr-3 text-cyan-500"></i>
-                ნივთები ({{ items|length }})
+                ნივთები ({{ pagination.total or 0 }})
             </h2>
             
             {% if items %}
-   <div class="overflow-x-auto">
-    <table class="w-full">
-        <thead>
-            </thead>
-        <tbody id="itemList" class="divide-y divide-gray-200"> {% for item in items %}
-            <tr id="item-row-{{ item.id }}"> <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center">
-                       <input type="text" name="name" value="{{ item.name }}"
-                              class="edit-item-input bg-transparent border-b border-gray-300 w-full text-sm font-medium text-gray-900"
-                              data-id="{{ item.id }}"> </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
-                    <button class="save-item-btn text-blue-600 hover:text-blue-900 hidden" data-id="{{ item.id }}" title="Save">
-                        <i class="fas fa-save text-lg"></i>
-                    </button>
-                    <button class="delete-item-btn text-red-600 hover:text-red-900 p-2" data-id="{{ item.id }}" title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-            {% else %}
-                <div class="text-center py-12">
-                    <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
-                    <h3 class="text-xl font-semibold text-gray-500 mb-2">ჯერ ნივთები არ არის</h3>
-                    <p class="text-gray-400">დაიწყეთ თქვენი პირველი ნივთის დამატებით ზემოთ</p>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-    <div class="bg-white rounded-2xl shadow-xl mt-8 p-8">
-            <h2 class="text-xl font-bold text-gray-700 mb-6 flex items-center">
-                <i class="fas fa-chart-line mr-3 text-indigo-500"></i>
-                ყოველკვირეული რეპორტი
-            </h2>
-            {% if report_data %}
                 <div class="overflow-x-auto">
-                    <h3 class="font-semibold mb-4">დეტალური მონაცემები</h3>
                     <table class="w-full">
-                        <thead>
-                            <tr class="bg-gray-50 border-b-2 border-gray-200">
-                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">კვირის დასასრული</th>
-                                {% for col in report_data[0].keys() if col != 'timestamp' %}
-                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ col }}</th>
-                                {% endfor %}
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            {% for row in report_data %}
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ row.timestamp }}</td>
-                                {% for key, value in row.items() if key != 'timestamp' %}
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ value }}</td>
-                                {% endfor %}
+                        <tbody id="itemList" class="divide-y divide-gray-200">
+                            {% for item in items %}
+                            <tr id="item-row-{{ item.id }}">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <input type="text" name="name" value="{{ item.name }}" class="edit-item-input bg-transparent border-b border-gray-300 w-full" data-id="{{ item.id }}">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
+                                    <button class="save-item-btn text-blue-600 hover:text-blue-900 hidden" data-id="{{ item.id }}" title="Save"><i class="fas fa-save text-lg"></i></button>
+                                    <button class="delete-item-btn text-red-600 hover:text-red-900 p-2" data-id="{{ item.id }}" title="Delete"><i class="fas fa-trash"></i></button>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
+
+                <div class="mt-6 flex justify-center items-center">
+                    <nav aria-label="Page navigation">
+                        <ul class="inline-flex items-center -space-x-px">
+                            <li>
+                                <a href="{{ url_for('admin_panel', page=pagination.prev_num, search=search_query) if pagination.has_prev else '#' }}"
+                                   class="px-3 py-2 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 {{ 'opacity-50 cursor-not-allowed' if not pagination.has_prev }}">Previous</a>
+                            </li>
+                            {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                                {% if page_num %}
+                                    <li>
+                                        <a href="{{ url_for('admin_panel', page=page_num, search=search_query) }}"
+                                           class="px-3 py-2 leading-tight border border-gray-300 {{ 'bg-blue-50 text-blue-600' if page_num == pagination.page else 'text-gray-500 bg-white hover:bg-gray-100' }}">{{ page_num }}</a>
+                                    </li>
+                                {% else %}
+                                    <li><span class="px-3 py-2 text-gray-500 bg-white border border-gray-300">...</span></li>
+                                {% endif %}
+                            {% endfor %}
+                            <li>
+                                <a href="{{ url_for('admin_panel', page=pagination.next_num, search=search_query) if pagination.has_next else '#' }}"
+                                   class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 {{ 'opacity-50 cursor-not-allowed' if not pagination.has_next }}">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
             {% else %}
                 <div class="text-center py-12">
-                    <i class="fas fa-file-alt text-6xl text-gray-300 mb-4"></i>
-                    <h3 class="text-xl font-semibold text-gray-500 mb-2">რეპორტისთვის მონაცემები არ არის</h3>
-                    <p class="text-gray-400">როდესაც შეკვეთები დაგროვდება, რეპორტი აქ გამოჩნდება.</p>
+                    <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
+                    <h3 class="text-xl font-semibold text-gray-500 mb-2">No items found.</h3>
                 </div>
             {% endif %}
         </div>
+    </div>
 
-        <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

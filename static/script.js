@@ -1,14 +1,11 @@
-// Clear search
-function clearSearch() {
-    window.location.href = '/';
-}
- 
-// Smooth scroll to top
+// ============================================================================
+// GLOBAL HELPER FUNCTIONS
+// ============================================================================
+
 function scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// Debounce function to limit how often a function is called
 function debounce(func, delay) {
     let timeoutId;
     return function(...args) {
@@ -17,307 +14,294 @@ function debounce(func, delay) {
     };
 }
 
-// Function to send form data to server for saving progress
-function autoSave() {
-    const customer_name = document.getElementById('customer_name_input').value;
-    const customer_phone = document.getElementById('customer_phone_input').value;
-    const room_number = document.getElementById('room_number_input').value;
+// ============================================================================
+// MAIN SCRIPT LOGIC
+// ============================================================================
 
-    const quantities = {};
-    document.querySelectorAll("input[name^='qty_']").forEach(input => {
-        quantities[input.name] = input.value;
-    });
+document.addEventListener('DOMContentLoaded', () => {
 
-    return fetch("/save-progress", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            customer_name,
-            customer_phone,
-            room_number,
-            quantities
-        })
-    });
-}
-
-// Function to clear customer info and quantities from the session
-function clearForm() {
-    if (confirm("ნამდვილად გსურთ ფორმის გასუფთავება?")) {
-        fetch("/clear-session", {
-            method: "POST"
-        }).then(response => {
-            if (response.ok) {
-                window.location.reload();
-            }
-        });
-    }
-}
-
-// Function to handle the manual "Save" button click with visual feedback
-function handleSaveClick() {
-    const saveBtn = document.getElementById('saveBtn');
-    if (!saveBtn) return;
-
-    const originalHtml = saveBtn.innerHTML;
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>შენახვა...`; // Saving...
-    saveBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600');
-    saveBtn.classList.add('bg-yellow-500', 'cursor-not-allowed');
-
-    autoSave()
-        .then(response => {
-            if (response.ok) {
-                saveBtn.innerHTML = `<i class="fas fa-check-circle mr-2"></i>შენახულია!`; // Saved!
-                saveBtn.classList.remove('bg-yellow-500');
-                saveBtn.classList.add('bg-green-500');
-            } else {
-                throw new Error('Server responded with an error.');
-            }
-        })
-        .catch(error => {
-            console.error('Save failed:', error);
-            saveBtn.innerHTML = `<i class="fas fa-times-circle mr-2"></i>შეცდომა`; // Error
-            saveBtn.classList.remove('bg-yellow-500');
-            saveBtn.classList.add('bg-red-500');
-        })
-        .finally(() => {
-            setTimeout(() => {
-                saveBtn.innerHTML = originalHtml;
-                saveBtn.disabled = false;
-                saveBtn.classList.remove('bg-green-500', 'bg-red-500', 'bg-yellow-500', 'cursor-not-allowed');
-                saveBtn.classList.add('bg-blue-500', 'hover:bg-blue-600');
-            }, 2000);
-        });
-}
-
-// Function to sync the main form inputs with the hidden search form inputs
-function syncSearchForm() {
-    const nameInput = document.getElementById('customer_name_input');
-    const phoneInput = document.getElementById('customer_phone_input');
-    const roomInput = document.getElementById('room_number_input');
-    
-    if (nameInput && phoneInput && roomInput) {
-        document.getElementById('hidden_customer_name').value = nameInput.value;
-        document.getElementById('hidden_customer_phone').value = phoneInput.value;
-        document.getElementById('hidden_room_number').value = roomInput.value;
-    }
-}
-
-// Animate scroll icon on scroll
-window.addEventListener('scroll', () => {
-    const scrollIcon = document.getElementById('scrollIcon');
-    if (scrollIcon) {
-        scrollIcon.classList.toggle('animate-pulse', window.scrollY > 300);
-    }
-});
-
-// Auto-hide flash messages after 5 seconds
-setTimeout(() => {
-    document.querySelectorAll('.border-l-4, .animate-slideIn').forEach(alert => {
-        alert.style.transition = 'opacity 0.5s ease';
-        alert.style.opacity = '0';
-        setTimeout(() => alert.remove(), 500);
-    });
-}, 5000);
-
-// Debounced version of autoSave for use with input events
-const debouncedAutoSave = debounce(autoSave, 500);
-
-// Add event listener to all relevant inputs for auto-saving
-document.addEventListener('input', (event) => {
-    if (event.target.matches("input[name^='customer_'], input[name^='qty_']")) {
-        debouncedAutoSave();
-    }
-});
-
-// A single listener for when the page content is fully loaded
-document.addEventListener('DOMContentLoaded', function() {
-    // 1. Sync forms on initial page load
-    syncSearchForm();
-
-    // 2. Force save before search to prevent data loss
-    const searchForm = document.getElementById('searchForm');
-    let isSearchSubmitting = false; // Flag to prevent infinite loop
-
-    if (searchForm) {
-        searchForm.addEventListener('submit', function(event) {
-            if (isSearchSubmitting) return;
-            
-            event.preventDefault();
-            autoSave().finally(() => {
-                isSearchSubmitting = true;
-                searchForm.submit();
-            });
-        });
-    }
-
-    // 3. Add validation for the main order form submission
+    // ------------------------------------------------------------------------
+    // LOGIC FOR THE MAIN ORDER PAGE (index.html)
+    // ------------------------------------------------------------------------
     const orderForm = document.getElementById('orderForm');
     if (orderForm) {
-        orderForm.addEventListener('submit', function(e) {
-            let hasItems = false;
-            document.querySelectorAll('.quantity-input').forEach(input => {
-                if (parseInt(input.value) > 0) {
-                    hasItems = true;
+        function autoSave() {
+            const customer_name = document.getElementById('customer_name_input').value;
+            const customer_phone = document.getElementById('customer_phone_input').value;
+            const room_number = document.getElementById('room_number_input').value;
+            const quantities = {};
+            document.querySelectorAll("input[name^='qty_']").forEach(input => {
+                quantities[input.name] = input.value;
+            });
+            return fetch("/save-progress", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ customer_name, customer_phone, room_number, quantities })
+            });
+        }
+
+        const debouncedAutoSave = debounce(autoSave, 500);
+        document.addEventListener('input', (event) => {
+            if (event.target.matches("#customer_name_input, #customer_phone_input, #room_number_input, input[name^='qty_']")) {
+                debouncedAutoSave();
+            }
+        });
+
+        const itemSelector = document.getElementById('item-select');
+        const selectedItemsTable = document.getElementById('selected-items-table');
+
+        if (itemSelector && selectedItemsTable) {
+            function addQuantityRow(itemId, itemName, quantity = 1) {
+                const newRow = document.createElement('tr');
+                newRow.id = `selected-item-row-${itemId}`;
+                newRow.className = 'fade-in-up';
+                newRow.innerHTML = `
+                    <td class="py-4 border-b border-gray-200"><p class="font-semibold text-gray-800">${itemName}</p></td>
+                    <td class="py-4 border-b border-gray-200 w-40 text-right">
+                        <input type="number" name="qty_${itemId}" min="1" value="${quantity}" class="quantity-input w-20 h-12 text-center text-lg font-medium">
+                        <span class="text-gray-500 font-medium">ცალი</span>
+                    </td>`;
+                selectedItemsTable.appendChild(newRow);
+            }
+
+            // --- UPDATED: Preload items from data attribute for instant display and local search ---
+            const allItemsData = JSON.parse(itemSelector.dataset.items || '[]');
+            console.log('Total items loaded:', allItemsData.length); 
+            const tomselect = new TomSelect('#item-select', {
+                plugins: ['remove_button'],
+                valueField: 'id',
+                labelField: 'name',
+                searchField: 'name',
+                options: allItemsData,
+                maxOptions: null,
+                sortField: {
+                    field: 'name',
+                    direction: 'asc'
+                },
+                onItemAdd: function(value, $item) {
+                    const itemName = this.options[value].name;
+                    addQuantityRow(value, itemName);
+                    toggleClearButton();
+                },
+                onItemRemove: function(value) {
+                    const rowToRemove = document.getElementById(`selected-item-row-${value}`);
+                    if (rowToRemove) rowToRemove.remove();
+                    toggleClearButton();
                 }
             });
 
-            if (!hasItems) {
-                e.preventDefault();
-                alert('გთხოვთ, შეარჩიოთ მინიმუმ ერთი ნივთი რაოდენობის შეყვანით (0-ზე მეტი).');
+            // Create Clear All button
+            const clearAllBtn = document.createElement('button');
+            clearAllBtn.type = 'button';
+            clearAllBtn.id = 'clearAllItemsBtn';
+            clearAllBtn.className = 'clear-all-btn hidden';
+            clearAllBtn.innerHTML = '<i class="fas fa-times-circle mr-2"></i>ყველას წაშლა';
+            
+            // Insert button after the item selector
+            itemSelector.parentElement.appendChild(clearAllBtn);
+            
+            // Show/hide button based on selected items
+            function toggleClearButton() {
+                const hasItems = tomselect.items.length > 0;
+                clearAllBtn.classList.toggle('hidden', !hasItems);
             }
-        });
+            
+            // Clear all functionality
+            clearAllBtn.addEventListener('click', function() {
+                if (confirm('ნამდვილად გსურთ ყველა ნივთის წაშლა?')) {
+                    tomselect.clear();
+                    selectedItemsTable.innerHTML = '';
+                    toggleClearButton();
+                    debouncedAutoSave();
+                }
+            });
+
+            // --- Restore saved state on page load ---
+            if (typeof formData !== 'undefined' && formData && formData.quantities) {
+                const itemMap = new Map(allItemsData.map(item => [item.id.toString(), item.name]));
+                for (const key in formData.quantities) {
+                    const itemId = key.replace('qty_', '');
+                    const quantity = formData.quantities[key];
+                    if (quantity > 0) {
+                        const itemName = itemMap.get(itemId);
+                        if (itemName) {
+                            tomselect.addOption({id: itemId, name: itemName});
+                            tomselect.addItem(itemId, true);
+                            addQuantityRow(itemId, itemName, quantity);
+                        }
+                    }
+                }
+            } else {
+                fetch('/clear-session', { method: 'POST' });
+            }
+            
+            // Initial check for button visibility
+            toggleClearButton();
+        }
     }
-});
 
-// Add this function to your static/scripts.js file
+    // ------------------------------------------------------------------------
+    // LOGIC FOR THE ADMIN PANEL PAGE (admin_panel.html)
+    // ------------------------------------------------------------------------
+    const adminPanel = document.getElementById('addItemForm');
+    if (adminPanel) {
+        const newItemNameInput = document.getElementById('newItemName');
+        const itemList = document.getElementById('itemList');
 
-function submitAction(action, itemId = null) {
-    const form = document.getElementById('adminForm');
-    const actionInput = document.getElementById('formAction');
-    const itemIdInput = document.getElementById('formItemId');
-    const itemNameInput = document.getElementById('formItemName');
-    const bulkItemsInput = document.getElementById('formBulkItems');
-
-    // Set the action for the form
-    actionInput.value = action;
-
-    if (action === 'add') {
-        const name = document.getElementById('add_item_name').value;
-        if (!name.trim()) {
-            alert('Please enter an item name.');
-            return;
+        function updateItemCounts() {
+            if (!itemList) return;
+            const countHeader = document.getElementById('item-count-header');
+            const countStat = document.getElementById('item-count-stat');
+            if (countHeader && countStat) {
+                const newCount = itemList.children.length;
+                countStat.innerText = newCount;
+                countHeader.innerHTML = `<i class="fas fa-list mr-3 text-cyan-500"></i> ნივთები (${newCount})`;
+            }
         }
-        itemNameInput.value = name;
-    } else if (action === 'edit') {
-        const name = document.getElementById('edit_name_input_' + itemId).value;
-        if (!name.trim()) {
-            alert('Please enter an item name.');
-            return;
-        }
-        itemIdInput.value = itemId;
-        itemNameInput.value = name;
-    } else if (action === 'delete') {
-        if (!confirm('Are you sure you want to delete this item?')) {
-            return;
-        }
-        itemIdInput.value = itemId;
-    } else if (action === 'bulk_add') {
-        const bulkText = document.getElementById('bulk_items_textarea').value;
-        if (!bulkText.trim()) {
-            alert('Please enter items for bulk addition.');
-            return;
-        }
-        bulkItemsInput.value = bulkText;
-    }
-    
-    // Submit the form
-    form.submit();
-}
 
-// Add this to the end of static/script.js
-
-document.addEventListener('DOMContentLoaded', () => {
-    const addItemForm = document.getElementById('addItemForm');
-    const newItemNameInput = document.getElementById('newItemName');
-    const itemList = document.getElementById('itemList');
-
-    // --- 1. Handle ADDING a new item ---
-    if (addItemForm) {
-        addItemForm.addEventListener('submit', (e) => {
+        adminPanel.addEventListener('submit', (e) => {
             e.preventDefault();
             const itemName = newItemNameInput.value.trim();
-
             if (itemName) {
                 fetch('/api/item/add', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name: itemName })
                 })
-                .then(response => response.json())
-                .then(data => {
+                .then(r => r.json()).then(data => {
                     if (data.status === 'success') {
-                        // If successful, add new item row to the table
-                        const newRow = document.createElement('tr');
-                        newRow.id = `item-row-${data.item.id}`;
-                        newRow.innerHTML = `
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="flex items-center">
-                                   <input type="text" name="name" value="${data.item.name}"
-                                          class="edit-item-input bg-transparent border-b border-gray-300 w-full text-sm font-medium text-gray-900"
-                                          data-id="${data.item.id}">
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
-                                <button class="save-item-btn text-blue-600 hover:text-blue-900 hidden" data-id="${data.item.id}" title="Save">
-                                    <i class="fas fa-save text-lg"></i>
-                                </button>
-                                <button class="delete-item-btn text-red-600 hover:text-red-900 p-2" data-id="${data.item.id}" title="Delete">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        `;
-                        itemList.appendChild(newRow);
-                        newItemNameInput.value = ''; // Clear the input
+                        if (itemList) {
+                            const newRow = itemList.insertRow(0);
+                            newRow.id = `item-row-${data.item.id}`;
+                            newRow.innerHTML = `
+                                <td class="px-6 py-4 whitespace-nowrap"><input type="text" value="${data.item.name}" class="edit-item-input bg-transparent border-b w-full" data-id="${data.item.id}"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <button class="save-item-btn text-blue-600 hidden" data-id="${data.item.id}" title="Save"><i class="fas fa-save"></i></button>
+                                    <button class="delete-item-btn text-red-600" data-id="${data.item.id}" title="Delete"><i class="fas fa-trash"></i></button>
+                                </td>`;
+                            newItemNameInput.value = '';
+                            updateItemCounts();
+                        }
                     } else {
-                        alert(`Error: ${data.message}`);
+                        alert(data.message || 'Error adding item');
                     }
-                });
+                }).catch(err => alert('An error occurred.'));
             }
         });
-    }
 
-    // --- 2. Handle DELETING and EDITING items ---
-    if (itemList) {
-        itemList.addEventListener('click', (e) => {
-            const target = e.target.closest('button');
-            if (!target) return;
+        // Bulk Add Form Logic
+        const bulkAddForm = document.getElementById('bulkAddForm');
+        if (bulkAddForm) {
+            bulkAddForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const bulkText = document.getElementById('bulkItemsText').value.trim();
+                const submitButton = bulkAddForm.querySelector('button[type="submit"]');
+                const originalButtonHtml = submitButton.innerHTML;
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> მუშაობს...';
 
-            // Handle DELETE
-            if (target.classList.contains('delete-item-btn')) {
-                const itemId = target.dataset.id;
-                if (confirm('Are you sure you want to delete this item?')) {
-                    fetch(`/api/item/delete/${itemId}`, { method: 'DELETE' })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            document.getElementById(`item-row-${itemId}`).remove();
-                        } else {
-                            alert(`Error: ${data.message}`);
+                fetch('/api/item/bulk_add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items_text: bulkText })
+                }).then(r => r.json()).then(data => {
+                    alert(data.message);
+                    if (data.status === 'success') { window.location.reload(); }
+                }).catch(err => alert('An error occurred.'))
+                .finally(() => {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalButtonHtml;
+                });
+            });
+        }
+        
+        const liveSearchInput = document.getElementById('liveSearchInput');
+        if (liveSearchInput) {
+            const debouncedSearch = debounce(() => {
+                const query = liveSearchInput.value.trim();
+                const paginationNav = document.querySelector('nav[aria-label="Page navigation"]');
+                const countHeader = document.getElementById('item-count-header');
+                if (query === '') {
+                    window.location.href = '/admin/';
+                    return;
+                }
+                fetch(`/api/items/search?q=${encodeURIComponent(query)}`)
+                    .then(r => r.json()).then(items => {
+                        if (itemList) itemList.innerHTML = '';
+                        if (paginationNav) paginationNav.style.display = 'none';
+                        items.forEach(item => {
+                            const newRow = itemList.insertRow();
+                            newRow.id = `item-row-${item.id}`;
+                            newRow.innerHTML = `
+                                <td class="px-6 py-4 whitespace-nowrap"><input type="text" value="${item.name}" class="edit-item-input bg-transparent border-b w-full" data-id="${item.id}"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <button class="save-item-btn text-blue-600 hidden" data-id="${item.id}" title="Save"><i class="fas fa-save"></i></button>
+                                    <button class="delete-item-btn text-red-600" data-id="${item.id}" title="Delete"><i class="fas fa-trash"></i></button>
+                                </td>`;
+                        });
+                        if (countHeader) {
+                            countHeader.innerHTML = `<i class="fas fa-list mr-3 text-cyan-500"></i> Found ${items.length} items`;
                         }
                     });
-                }
-            }
-            
-            // Handle SAVE (for edits)
-            if (target.classList.contains('save-item-btn')) {
-                const itemId = target.dataset.id;
-                const inputField = document.querySelector(`.edit-item-input[data-id='${itemId}']`);
-                const newName = inputField.value.trim();
+            }, 300);
+            liveSearchInput.addEventListener('input', debouncedSearch);
+        }
 
-                fetch(`/api/item/edit/${itemId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: newName })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        target.classList.add('hidden'); // Hide save button again
-                    } else {
-                        alert(`Error: ${data.message}`);
+        if (itemList) {
+            itemList.addEventListener('click', (e) => {
+                const deleteBtn = e.target.closest('.delete-item-btn');
+                const saveBtn = e.target.closest('.save-item-btn');
+                if (deleteBtn) {
+                    const itemId = deleteBtn.dataset.id;
+                    if (confirm('Are you sure?')) {
+                        fetch(`/api/item/delete/${itemId}`, { method: 'DELETE' }).then(r => r.json()).then(data => {
+                            if (data.status === 'success') {
+                                document.getElementById(`item-row-${itemId}`).remove();
+                                updateItemCounts();
+                            } else { alert(`Error: ${data.message}`); }
+                        });
                     }
-                });
-            }
-        });
+                }
+                if (saveBtn) {
+                    const itemId = saveBtn.dataset.id;
+                    const inputField = document.querySelector(`.edit-item-input[data-id='${itemId}']`);
+                    const newName = inputField.value.trim();
+                    fetch(`/api/item/edit/${itemId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: newName })
+                    }).then(r => r.json()).then(data => {
+                        if (data.status === 'success') {
+                            saveBtn.classList.add('hidden');
+                        } else { alert(`Error: ${data.message}`); }
+                    });
+                }
+            });
+            itemList.addEventListener('input', (e) => {
+                if (e.target.classList.contains('edit-item-input')) {
+                    const itemId = e.target.dataset.id;
+                    const saveBtn = document.querySelector(`.save-item-btn[data-id='${itemId}']`);
+                    if (saveBtn) saveBtn.classList.remove('hidden');
+                }
+            });
+        }
+    }
 
-        // Show save button when an item name is changed
-        itemList.addEventListener('input', (e) => {
-            if (e.target.classList.contains('edit-item-input')) {
-                const itemId = e.target.dataset.id;
-                const saveBtn = document.querySelector(`.save-item-btn[data-id='${itemId}']`);
-                saveBtn.classList.remove('hidden');
-            }
+    // ------------------------------------------------------------------------
+    // LOGIC FOR ALL PAGES
+    // ------------------------------------------------------------------------
+    setTimeout(() => {
+        document.querySelectorAll('.flash-message').forEach(alert => {
+            alert.style.transition = 'opacity 0.5s ease';
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 500);
+        });
+    }, 5000);
+
+    const scrollIcon = document.getElementById('scrollIcon');
+    if (scrollIcon) {
+        window.addEventListener('scroll', () => {
+            scrollIcon.classList.toggle('animate-pulse', window.scrollY > 300);
         });
     }
 });
