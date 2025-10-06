@@ -150,8 +150,63 @@ def admin_orders_confirmed():
         return redirect(url_for('admin_login'))
     
     page = request.args.get('page', 1, type=int)
-    pagination = Order.query.filter_by(status='confirmed').order_by(Order.confirmed_at.desc()).paginate(page=page, per_page=20, error_out=False)
-    return render_template('admin_orders_confirmed.html', orders=pagination.items, pagination=pagination)
+    search_query = request.args.get('search', '').strip()
+    sort_by = request.args.get('sort', 'date_desc')
+    
+    # Date range filters
+    start_date_param = request.args.get('start_date')
+    end_date_param = request.args.get('end_date')
+    
+    start_date = None
+    end_date = None
+    
+    if start_date_param:
+        start_date = datetime.strptime(start_date_param, '%Y-%m-%d')
+    if end_date_param:
+        end_date = datetime.strptime(end_date_param, '%Y-%m-%d')
+        end_date = end_date.replace(hour=23, minute=59, second=59)
+    
+    # Base query
+    query = Order.query.filter_by(status='confirmed')
+    
+    # Apply date range filter
+    if start_date:
+        query = query.filter(Order.confirmed_at >= start_date)
+    if end_date:
+        query = query.filter(Order.confirmed_at <= end_date)
+    
+    # Apply search filter
+    if search_query:
+        query = query.filter(
+            db.or_(
+                Order.customer_name.ilike(f'%{search_query}%'),
+                Order.customer_phone.ilike(f'%{search_query}%'),
+                Order.room_number.ilike(f'%{search_query}%')
+            )
+        )
+    
+    # Apply sorting
+    if sort_by == 'date_desc':
+        query = query.order_by(Order.confirmed_at.desc())
+    elif sort_by == 'date_asc':
+        query = query.order_by(Order.confirmed_at.asc())
+    elif sort_by == 'name_asc':
+        query = query.order_by(Order.customer_name.asc())
+    elif sort_by == 'name_desc':
+        query = query.order_by(Order.customer_name.desc())
+    elif sort_by == 'room_asc':
+        query = query.order_by(Order.room_number.asc())
+    elif sort_by == 'room_desc':
+        query = query.order_by(Order.room_number.desc())
+    
+    pagination = query.paginate(page=page, per_page=20, error_out=False)
+    return render_template('admin_orders_confirmed.html', 
+                         orders=pagination.items, 
+                         pagination=pagination, 
+                         search_query=search_query, 
+                         sort_by=sort_by,
+                         start_date=start_date_param or '',
+                         end_date=end_date_param or '')
 
 @app.route('/admin/orders/deleted')
 def admin_orders_deleted():
