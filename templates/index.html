@@ -1,38 +1,46 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ka">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>შეკვეთის ფორმა</title>
+    <meta name="description" content="Order management system">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>📋 შეკვეთის ფორმა</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
 </head>
 <body>
-    <header class="header-glass text-white py-6 relative overflow-hidden">
+    <header class="header-glass text-white py-6 relative overflow-hidden" role="banner">
         <div class="container mx-auto px-6 relative z-10">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-4">
-                    <a href="{{ url_for('index') }}">
-                        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo h-14 w-auto cursor-pointer">
+                    <a href="{{ url_for('index') }}" aria-label="Home">
+                        <img src="{{ url_for('static', filename='logo.png') }}" alt="Company Logo" class="logo h-14 w-auto cursor-pointer">
                     </a>
                 </div>
-                <a href="{{ url_for('admin_login') }}" class="admin-btn p-3 rounded-full">
+                <a href="{{ url_for('admin_login') }}" class="admin-btn p-3 rounded-full" aria-label="Admin Panel">
                     <i class="fas fa-cog text-xl"></i>
                 </a>
             </div>
         </div>
     </header>
 
-    <div class="container mx-auto px-6 mt-6 flash-message-container">
+    <!-- Flash Messages with Auto-dismiss -->
+    <div class="container mx-auto px-6 mt-6 flash-message-container" role="alert" aria-live="polite">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="flash-message mb-4 p-4 rounded-lg {{ 'bg-green-100 border-green-500 text-green-700' if category == 'success' else 'bg-red-100 border-red-500 text-red-700' if category == 'error' else 'bg-yellow-100 border-yellow-500 text-yellow-700' }} animate-slideIn">
-                        <div class="flex items-center">
-                            <i class="fas {{ 'fa-check-circle' if category == 'success' else 'fa-times-circle' if category == 'error' else 'fa-info-circle' }} mr-2"></i>
-                            {{ message }}
+                    <div class="flash-message mb-4 p-4 rounded-lg shadow-lg {{ 'bg-green-100 border-l-4 border-green-500 text-green-700' if category == 'success' else 'bg-red-100 border-l-4 border-red-500 text-red-700' if category == 'error' else 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700' }} animate-slideIn" role="alert">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <i class="fas {{ 'fa-check-circle' if category == 'success' else 'fa-times-circle' if category == 'error' else 'fa-exclamation-triangle' }} mr-2 text-xl"></i>
+                                <span>{{ message }}</span>
+                            </div>
+                            <button onclick="this.parentElement.parentElement.remove()" class="text-gray-500 hover:text-gray-700 ml-4" aria-label="Dismiss notification">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
                     </div>
                 {% endfor %}
@@ -40,75 +48,262 @@
         {% endwith %}
     </div>
 
-    <main class="container mx-auto px-6 py-8">
-        <form id="orderForm" action="{{ url_for('index') }}" method="post">
-            <div class="form-section">
-                <h2 class="text-2xl font-bold primary-text mb-6 flex items-center">
-                    <i class="fas fa-user mr-3 text-[#00565c]"></i>
-                    მომხმარებლის ინფორმაცია <span class="text-red-500 ml-1">*</span>
+    <main class="container mx-auto px-6 py-8" role="main">
+        <form id="orderForm" action="{{ url_for('index') }}" method="post" novalidate>            
+            <!-- Customer Information Section -->
+            <section class="form-section" aria-labelledby="customer-info-heading">
+                <h2 id="customer-info-heading" class="text-2xl font-bold primary-text mb-6 flex items-center">
+                    <i class="fas fa-user mr-3 text-[#00565c]" aria-hidden="true"></i>
+                    მომხმარებლის ინფორმაცია <span class="text-red-500 ml-1" aria-label="required">*</span>
                 </h2>
                 <div class="grid md:grid-cols-3 gap-6">
+                    <!-- Customer Name -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">სახელი გვარი <span class="text-red-500">*</span></label>
-                        <input type="text" id="customer_name_input" name="customer_name" placeholder="შეიყვანეთ თქვენი სახელი" 
-                               value="{{ form_data.customer_name | default('') }}"
-                               class="w-full p-4 border border-gray-200 rounded-xl" required>
+                        <label for="customer_name_input" class="block text-sm font-medium text-gray-700 mb-2">
+                            სახელი გვარი <span class="text-red-500" aria-label="required">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="customer_name_input" 
+                            name="customer_name" 
+                            placeholder="შეიყვანეთ თქვენი სახელი" 
+                            value="{{ form_data.customer_name | default('') }}"
+                            class="w-full p-4 border border-gray-200 rounded-xl transition-all"
+                            required
+                            minlength="2"
+                            maxlength="100"
+                            aria-required="true"
+                            aria-describedby="name-error">
+                        <span id="name-error" class="error-message text-red-500 text-sm mt-1 hidden" role="alert"></span>
                     </div>
+                    
+                    <!-- Customer Phone -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">ტელეფონის ნომერი <span class="text-red-500">*</span></label>
-                        <input type="tel" id="customer_phone_input" name="customer_phone" placeholder="თქვენი ტელეფონის ნომერი" 
-                               value="{{ form_data.customer_phone | default('') }}"
-                               class="w-full p-4 border border-gray-200 rounded-xl" required>
+                        <label for="customer_phone_input" class="block text-sm font-medium text-gray-700 mb-2">
+                            ტელეფონის ნომერი <span class="text-red-500" aria-label="required">*</span>
+                        </label>
+                        <input 
+                            type="tel" 
+                            id="customer_phone_input" 
+                            name="customer_phone" 
+                            placeholder="თქვენი ტელეფონის ნომერი" 
+                            value="{{ form_data.customer_phone | default('') }}"
+                            class="w-full p-4 border border-gray-200 rounded-xl transition-all"
+                            required
+                            pattern="[0-9\s\-\(\)\+]{9,15}"
+                            maxlength="20"
+                            aria-required="true"
+                            aria-describedby="phone-error">
+                        <span id="phone-error" class="error-message text-red-500 text-sm mt-1 hidden" role="alert"></span>
                     </div>
+                    
+                    <!-- Room Number -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">ოთახის ნომერი <span class="text-red-500">*</span></label>
-                        <input type="text" id="room_number_input" name="room_number" placeholder="თქვენი ოთახის ნომერი" 
-                               value="{{ form_data.room_number | default('') }}"
-                               class="w-full p-4 border border-gray-200 rounded-xl" required>
+                        <label for="room_number_input" class="block text-sm font-medium text-gray-700 mb-2">
+                            ოთახის ნომერი <span class="text-red-500" aria-label="required">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="room_number_input" 
+                            name="room_number" 
+                            placeholder="თქვენი ოთახის ნომერი" 
+                            value="{{ form_data.room_number | default('') }}"
+                            class="w-full p-4 border border-gray-200 rounded-xl transition-all"
+                            required
+                            maxlength="50"
+                            aria-required="true"
+                            aria-describedby="room-error">
+                        <span id="room-error" class="error-message text-red-500 text-sm mt-1 hidden" role="alert"></span>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div class="form-section">
-                <h2 class="text-2xl font-bold primary-text mb-6 flex items-center">
-                    <i class="fas fa-box mr-3 text-[#00565c]"></i>
-                    აირჩიეთ ნივთები <span class="text-red-500 ml-1">*</span>
+            <!-- Items Selection Section -->
+            <section class="form-section" aria-labelledby="items-heading">
+                <h2 id="items-heading" class="text-2xl font-bold primary-text mb-6 flex items-center">
+                    <i class="fas fa-box mr-3 text-[#00565c]" aria-hidden="true"></i>
+                    აირჩიეთ ნივთები <span class="text-red-500 ml-1" aria-label="required">*</span>
                 </h2>
                 
                 <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">მოძებნეთ და დაამატეთ ნივთები თქვენს შეკვეთას:</label>
-                    <select id="item-select" placeholder="დაიწყეთ ნივთის სახელის აკრეფა..."  data-items='{{ all_items | tojson }}'
-                        multiple></select>
-
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">თქვენი არჩეული ნივთები:</h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <tbody id="selected-items-table">
-                            </tbody>
-                    </table>
+                    <label for="item-select" class="block text-sm font-medium text-gray-700 mb-2">
+                        მოძებნეთ და დაამატეთ ნივთები თქვენს შეკვეთას:
+                    </label>
+                    <select 
+                        id="item-select" 
+                        placeholder="დაიწყეთ ნივთის სახელის აკრეფა..."  
+                        data-items='{{ all_items | tojson }}'
+                        multiple
+                        aria-label="Select items for your order"
+                        aria-describedby="items-help"></select>
+                    <p id="items-help" class="text-sm text-gray-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        დაიწყეთ აკრეფა რომ იპოვოთ ნივთები. შეგიძლიათ რამდენიმე ნივთის არჩევა.
+                    </p>
                 </div>
-            </div>
 
+                <!-- Selected Items Table -->
+                <div class="mt-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-shopping-cart mr-2 text-[#00565c]" aria-hidden="true"></i>
+                        თქვენი არჩეული ნივთები:
+                    </h3>
+                    <div class="overflow-x-auto" role="region" aria-label="Selected items table">
+                        <table class="w-full">
+                            <tbody id="selected-items-table" aria-live="polite">
+                                <!-- Items will be dynamically added here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="no-items-message" class="text-center py-8 text-gray-500 hidden" role="status">
+                        <i class="fas fa-inbox text-4xl mb-2" aria-hidden="true"></i>
+                        <p>ჯერ არ არის არჩეული ნივთები</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Submit Button -->
             <div class="text-center mt-12">
-                <button type="submit" id="submitOrderBtn" 
-                        class="group relative px-12 py-4 bg-gradient-to-r from-[#005e67] to-[#004c52] text-white text-lg font-semibold rounded-2xl shadow-xl hover:scale-105 transition-transform duration-300">
-                    <span class="relative z-10 flex items-center">
-                        <i class="fas fa-shopping-cart mr-3"></i>
-                        შეკვეთის დადასტურება
+                <button 
+                    type="submit" 
+                    id="submitOrderBtn" 
+                    class="group relative px-12 py-4 bg-gradient-to-r from-[#005e67] to-[#004c52] text-white text-lg font-semibold rounded-2xl shadow-xl hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Submit order">
+                    <span class="relative z-10 flex items-center justify-center">
+                        <i class="fas fa-shopping-cart mr-3" aria-hidden="true"></i>
+                        <span id="submit-text">შეკვეთის დადასტურება</span>
+                        <i class="fas fa-spinner fa-spin ml-3 hidden" id="submit-spinner" aria-hidden="true"></i>
                     </span>
                 </button>
+                <p class="text-sm text-gray-500 mt-4">
+                    <i class="fas fa-shield-alt mr-1"></i>
+                    თქვენი ინფორმაცია დაცულია
+                </p>
             </div>
         </form>
     </main>
 
-    <button class="floating-button text-white" onclick="scrollToTop()">
-        <i class="fas fa-arrow-up" id="scrollIcon"></i>
+    <!-- Scroll to Top Button -->
+    <button 
+        class="floating-button text-white" 
+        onclick="scrollToTop()"
+        aria-label="Scroll to top"
+        style="display: none;">
+        <i class="fas fa-arrow-up" id="scrollIcon" aria-hidden="true"></i>
     </button>
     
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
     <script>
         const formData = {{ form_data | tojson | default('{}', true) }};
     </script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    
+    <!-- Enhanced Form Validation -->
+    <script>
+        (function() {
+            'use strict';
+            
+            const form = document.getElementById('orderForm');
+            const submitBtn = document.getElementById('submitOrderBtn');
+            const submitText = document.getElementById('submit-text');
+            const submitSpinner = document.getElementById('submit-spinner');
+            
+            // Real-time validation
+            function validateField(input, validationFn, errorMsg) {
+                input.addEventListener('blur', function() {
+                    const errorSpan = document.getElementById(input.id.replace('_input', '-error'));
+                    if (!validationFn(this.value)) {
+                        this.classList.add('border-red-500');
+                        if (errorSpan) {
+                            errorSpan.textContent = errorMsg;
+                            errorSpan.classList.remove('hidden');
+                        }
+                    } else {
+                        this.classList.remove('border-red-500');
+                        if (errorSpan) {
+                            errorSpan.classList.add('hidden');
+                        }
+                    }
+                });
+            }
+            
+            // Validate customer name
+            const nameInput = document.getElementById('customer_name_input');
+            if (nameInput) {
+                validateField(
+                    nameInput,
+                    (value) => value.trim().length >= 2,
+                    'სახელი უნდა შეიცავდეს მინიმუმ 2 სიმბოლოს'
+                );
+            }
+            
+            // Validate phone
+            const phoneInput = document.getElementById('customer_phone_input');
+            if (phoneInput) {
+                validateField(
+                    phoneInput,
+                    (value) => /^[0-9\s\-\(\)\+]{9,15}$/.test(value),
+                    'გთხოვთ შეიყვანოთ სწორი ტელეფონის ნომერი'
+                );
+            }
+            
+            // Validate room number
+            const roomInput = document.getElementById('room_number_input');
+            if (roomInput) {
+                validateField(
+                    roomInput,
+                    (value) => value.trim().length > 0,
+                    'ოთახის ნომერი სავალდებულოა'
+                );
+            }
+            
+            // Handle form submission
+            form.addEventListener('submit', function(e) {
+                // Check if any items are selected
+                const selectedItems = document.querySelectorAll('#selected-items-table tr');
+                if (selectedItems.length === 0) {
+                    e.preventDefault();
+                    alert('გთხოვთ აირჩიოთ მინიმუმ ერთი ნივთი');
+                    return;
+                }
+                
+                // Show loading state
+                submitBtn.disabled = true;
+                submitText.textContent = 'მუშავდება...';
+                submitSpinner.classList.remove('hidden');
+            });
+            
+            // Show/hide scroll button
+            const scrollBtn = document.querySelector('.floating-button');
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 300) {
+                    scrollBtn.style.display = 'flex';
+                } else {
+                    scrollBtn.style.display = 'none';
+                }
+            });
+            
+            // Update no items message
+            function updateNoItemsMessage() {
+                const table = document.getElementById('selected-items-table');
+                const message = document.getElementById('no-items-message');
+                if (table.children.length === 0) {
+                    message.classList.remove('hidden');
+                } else {
+                    message.classList.add('hidden');
+                }
+            }
+            
+            // Initial check
+            updateNoItemsMessage();
+            
+            // Observe changes to selected items
+            const observer = new MutationObserver(updateNoItemsMessage);
+            observer.observe(document.getElementById('selected-items-table'), {
+                childList: true
+            });
+        })();
+    </script>
 </body>
 </html>

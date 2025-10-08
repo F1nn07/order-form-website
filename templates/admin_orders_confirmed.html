@@ -7,11 +7,38 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    
+    <style>
+        @media print {
+            /* Hide everything on the page by default */
+            body * {
+                visibility: hidden;
+            }
+            /* Make only the printable area and its contents visible */
+            #printable-area, #printable-area * {
+                visibility: visible;
+            }
+            /* Position the printable content at the top of the page */
+            #printable-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                border: none;
+                box-shadow: none;
+                padding: 20px;
+                background-color: white;
+            }
+            /* Ensure buttons and other non-essential elements are hidden */
+            .no-print, .no-print * {
+                display: none !important;
+            }
+        }
+    </style>
 </head>
 <body class="min-h-screen py-8 bg-[#b9e1e2]">
     <div class="container mx-auto px-6 max-w-7xl">
-        <!-- Header -->
-        <div class="bg-white rounded-2xl shadow-xl p-8 mb-8">
+        <div class="bg-white rounded-2xl shadow-xl p-8 mb-8 no-print">
             <div class="flex items-center justify-between flex-wrap gap-4">
                 <div class="flex items-center space-x-4">
                     <i class="fas fa-check-circle text-3xl text-green-500"></i>
@@ -37,61 +64,42 @@
             </div>
         </div>
 
-        <!-- Search and Sort Filters -->
-        <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-8 no-print">
             <h3 class="text-lg font-bold text-gray-800 mb-4">
                 <i class="fas fa-filter mr-2"></i>ფილტრები
             </h3>
             <form method="GET" class="space-y-4">
-                <!-- Date Range -->
                 <div class="grid md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             <i class="fas fa-calendar mr-2"></i>საწყისი თარიღი:
                         </label>
                         <input type="date" name="start_date" value="{{ start_date }}" 
-                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             <i class="fas fa-calendar mr-2"></i>საბოლოო თარიღი:
                         </label>
                         <input type="date" name="end_date" value="{{ end_date }}" 
-                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
                 
-                <!-- Search and Sort -->
-                <div class="grid md:grid-cols-3 gap-4">
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-search mr-2"></i>ძებნა:
-                        </label>
-                        <input type="text" name="search" value="{{ search_query }}" 
-                               placeholder="მომხმარებლის სახელი, ტელეფონი, ან ოთახის ნომერი..." 
-                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-sort mr-2"></i>დალაგება:
-                        </label>
-                        <select name="sort" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            <option value="date_desc" {{ 'selected' if sort_by == 'date_desc' }}>თარიღი (ახალი → ძველი)</option>
-                            <option value="date_asc" {{ 'selected' if sort_by == 'date_asc' }}>თარიღი (ძველი → ახალი)</option>
-                            <option value="name_asc" {{ 'selected' if sort_by == 'name_asc' }}>სახელი (A → Z)</option>
-                            <option value="name_desc" {{ 'selected' if sort_by == 'name_desc' }}>სახელი (Z → A)</option>
-                            <option value="room_asc" {{ 'selected' if sort_by == 'room_asc' }}>ოთახი (ზრდადობით)</option>
-                            <option value="room_desc" {{ 'selected' if sort_by == 'room_desc' }}>ოთახი (კლებადობით)</option>
-                        </select>
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-search mr-2"></i>ძებნა:
+                    </label>
+                    <input type="text" name="search" value="{{ search_query }}" 
+                        placeholder="მომხმარებლის სახელი, ტელეფონი, ან ოთახის ნომერი..." 
+                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                 </div>
                 
-                <!-- Action Buttons -->
                 <div class="flex gap-3">
                     <button type="submit" class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-blue-700 transition-all">
                         <i class="fas fa-search mr-2"></i>გამოყენება
                     </button>
-                    {% if search_query or sort_by != 'date_desc' or start_date or end_date %}
+                    {% if search_query or start_date or end_date %}
                     <a href="{{ url_for('admin_orders_confirmed') }}" class="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600 transition-all">
                         <i class="fas fa-times mr-2"></i>გასუფთავება
                     </a>
@@ -100,7 +108,6 @@
             </form>
         </div>
 
-        <!-- Orders List -->
         {% if orders %}
             <div class="space-y-6">
                 {% for order in orders %}
@@ -120,12 +127,17 @@
                                 <div><i class="fas fa-check-circle mr-2 text-green-500"></i><strong>დადასტურების თარიღი:</strong> {{ order.confirmed_at.strftime('%Y-%m-%d %H:%M') }}</div>
                             </div>
                         </div>
-                        <button onclick="toggleEditMode({{ order.id }})" class="ml-4 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors edit-toggle-btn">
-                            <i class="fas fa-edit mr-2"></i>რედაქტირება
-                        </button>
+
+                        <div class="ml-4 flex flex-col gap-2 no-print">
+                            <button onclick="toggleEditMode({{ order.id }})" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors edit-toggle-btn">
+                                <i class="fas fa-edit mr-2"></i>რედაქტირება
+                            </button>
+                            <button onclick="printOrder({{ order.id }})" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+                                <i class="fas fa-print mr-2"></i>ბეჭდვა
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Order Items (View Mode) -->
                     <div class="bg-gray-50 rounded-lg p-4 mb-3 view-mode-{{ order.id }}">
                         <h4 class="font-semibold text-gray-700 mb-3 flex items-center">
                             <i class="fas fa-list mr-2"></i>შეკვეთილი ნივთები:
@@ -140,7 +152,6 @@
                         </div>
                     </div>
 
-                    <!-- Order Items (Edit Mode) -->
                     <div class="bg-blue-50 rounded-lg p-4 mb-3 edit-mode-{{ order.id }}" style="display: none;">
                         <h4 class="font-semibold text-gray-700 mb-3 flex items-center">
                             <i class="fas fa-edit mr-2"></i>შეკვეთის რედაქტირება:
@@ -166,7 +177,6 @@
                         </div>
                     </div>
 
-                    <!-- Comment -->
                     {% if order.admin_comment %}
                     <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
                         <p class="text-sm font-semibold text-blue-700 mb-1">
@@ -179,29 +189,28 @@
                 {% endfor %}
             </div>
 
-            <!-- Pagination -->
             {% if pagination.pages > 1 %}
-            <div class="mt-8 flex justify-center">
+            <div class="mt-8 flex justify-center no-print">
                 <nav aria-label="Page navigation">
                     <ul class="inline-flex items-center -space-x-px">
                         <li>
-                            <a href="{{ url_for('admin_orders_confirmed', page=pagination.prev_num, search=search_query, sort=sort_by, start_date=start_date, end_date=end_date) if pagination.has_prev else '#' }}"
+                            <a href="{{ url_for('admin_orders_confirmed', page=pagination.prev_num, search=search_query, start_date=start_date, end_date=end_date) if pagination.has_prev else '#' }}"
                                class="px-3 py-2 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 {{ 'opacity-50 cursor-not-allowed' if not pagination.has_prev }}">
-                                Previous
+                                წინა
                             </a>
                         </li>
                         {% for page_num in range(1, pagination.pages + 1) %}
                             <li>
-                                <a href="{{ url_for('admin_orders_confirmed', page=page_num, search=search_query, sort=sort_by, start_date=start_date, end_date=end_date) }}"
+                                <a href="{{ url_for('admin_orders_confirmed', page=page_num, search=search_query, start_date=start_date, end_date=end_date) }}"
                                    class="px-3 py-2 leading-tight border border-gray-300 {{ 'bg-blue-50 text-blue-600' if page_num == pagination.page else 'text-gray-500 bg-white hover:bg-gray-100' }}">
                                     {{ page_num }}
                                 </a>
                             </li>
                         {% endfor %}
                         <li>
-                            <a href="{{ url_for('admin_orders_confirmed', page=pagination.next_num, search=search_query, sort=sort_by, start_date=start_date, end_date=end_date) if pagination.has_next else '#' }}"
+                            <a href="{{ url_for('admin_orders_confirmed', page=pagination.next_num, search=search_query, start_date=start_date, end_date=end_date) if pagination.has_next else '#' }}"
                                class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 {{ 'opacity-50 cursor-not-allowed' if not pagination.has_next }}">
-                                Next
+                                შემდეგი
                             </a>
                         </li>
                     </ul>
@@ -264,10 +273,33 @@
                     alert('შეკვეთა წარმატებით განახლდა!');
                     location.reload();
                 } else {
-                    alert('Error: ' + data.message);
+                    alert('შეცდომა: ' + data.message);
                 }
             })
-            .catch(err => alert('An error occurred: ' + err));
+            .catch(err => alert('დაფიქსირდა შეცდომა: ' + err));
+        }
+
+        // 3. ADDED: JavaScript function for printing
+        function printOrder(orderId) {
+            const orderCardToPrint = document.getElementById(`order-${orderId}`);
+            if (!orderCardToPrint) return;
+
+            // Create a temporary, hidden container for the content to be printed
+            let printContainer = document.getElementById('printable-area');
+            if (!printContainer) {
+                printContainer = document.createElement('div');
+                printContainer.id = 'printable-area';
+                document.body.appendChild(printContainer);
+            }
+
+            // Clone the specific order card into the container
+            printContainer.innerHTML = orderCardToPrint.innerHTML;
+            
+            // Trigger the browser's print functionality
+            window.print();
+
+            // Clean up the container after printing
+            printContainer.innerHTML = '';
         }
     </script>
 </body>

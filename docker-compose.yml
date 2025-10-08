@@ -1,16 +1,26 @@
-version:
+version: '3.8'
 
 services:
+  # The Flask Application Service
   webapp:
-    build:
-      context: .
-      args:
-        UID: ${UID}
-        GID: ${GID}
-    ports:
-      - "5001:5001"
-    # The 'user:' directive is removed from here
+    build: .  # Build the image from the Dockerfile in the current directory
     volumes:
-      - .:/app
-    env_file:
-      - .env
+      # This is VERY IMPORTANT for SQLite!
+      # It links the 'data' folder on your server to the '/app/data' folder inside the container.
+      # This ensures your database file (inventory.db) is saved on the server and not lost when the container stops.
+      - ./data:/app/data
+    expose:
+      - "5001"  # Expose port 5001 for Nginx to connect to, but not to the public
+
+  # The Nginx Web Server Service
+  nginx:
+    image: nginx:latest  # Use the official Nginx image
+    ports:
+      # Map port 80 on the server to port 80 in the container.
+      # This makes your application accessible to the outside world.
+      - "80:80"
+    volumes:
+      # Mount our custom Nginx configuration file into the container
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - webapp  # Tell Nginx to wait for the webapp container to start first
